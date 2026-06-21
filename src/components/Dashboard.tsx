@@ -1,12 +1,14 @@
 // @ts-nocheck
 import { useState, useCallback } from 'react'
-import { Responsive, useContainerWidth } from 'react-grid-layout'
+import { Responsive, WidthProvider } from 'react-grid-layout/legacy'
 import { Widget } from './Widget'
 import { TasksView } from './TasksView'
 import { NotesView } from './NotesView'
 
+const ResponsiveGrid = WidthProvider(Responsive)
+
 const LAYOUT_KEY = 'dashboard_layout'
-const LAYOUT_VERSION = 2
+const LAYOUT_VERSION = 3
 
 const DEFAULT_LAYOUTS = {
   lg: [
@@ -41,7 +43,6 @@ function saveLayouts(layouts: unknown) {
 
 export function Dashboard() {
   const [layouts, setLayouts] = useState(loadLayouts)
-  const { width, containerRef, mounted } = useContainerWidth()
 
   const handleLayoutChange = useCallback((_: unknown, all: unknown) => {
     setLayouts(all)
@@ -49,29 +50,25 @@ export function Dashboard() {
   }, [])
 
   return (
-    <div ref={containerRef}>
-      {mounted && (
-        <Responsive
-          layouts={layouts}
-          width={width}
-          breakpoints={{ lg: 1200, md: 996, sm: 768 }}
-          cols={{ lg: 12, md: 10, sm: 6 }}
-          gridConfig={{ rowHeight: 50 }}
-          dragConfig={{ handle: '.drag-handle' }}
-          onLayoutChange={handleLayoutChange}
-        >
-          <div key="tasks">
-            <Widget title="Tasks">
-              <TasksView />
-            </Widget>
-          </div>
-          <div key="notes">
-            <Widget title="Notizen">
-              <NotesView />
-            </Widget>
-          </div>
-        </Responsive>
-      )}
-    </div>
+    <ResponsiveGrid
+      layouts={layouts}
+      breakpoints={{ lg: 1200, md: 996, sm: 768 }}
+      cols={{ lg: 12, md: 10, sm: 6 }}
+      rowHeight={50}
+      draggableHandle=".drag-handle"
+      onLayoutChange={handleLayoutChange}
+      margin={[8, 8]}
+    >
+      <div key="tasks" style={{ height: '100%' }}>
+        <Widget title="Tasks">
+          <TasksView />
+        </Widget>
+      </div>
+      <div key="notes" style={{ height: '100%' }}>
+        <Widget title="Notizen">
+          <NotesView />
+        </Widget>
+      </div>
+    </ResponsiveGrid>
   )
 }
