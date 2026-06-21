@@ -5,20 +5,30 @@ import { TasksView } from './components/TasksView'
 function App() {
   const { isAuthenticated, logout } = useAuth()
 
-  if (!isAuthenticated) {
-    return (
-      <div>
-        <h1>torganizerbi</h1>
-        <LoginButton />
-      </div>
-    )
-  }
-
   return (
-    <div>
-      <h1>torganizerbi</h1>
-      <button onClick={logout}>Abmelden</button>
-      <TasksView />
+    <div className="min-h-screen bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100">
+      <header className="border-b border-zinc-200 dark:border-zinc-800 px-4 py-3 flex items-center justify-between">
+        <h1 className="text-lg font-semibold tracking-tight">torganizerbi</h1>
+        {isAuthenticated && (
+          <button
+            onClick={logout}
+            className="text-sm text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
+          >
+            Abmelden
+          </button>
+        )}
+      </header>
+
+      <main className="max-w-xl mx-auto px-4 py-6">
+        {!isAuthenticated ? (
+          <div className="flex flex-col items-center gap-4 pt-20">
+            <p className="text-zinc-500 dark:text-zinc-400">Melde dich an um loszulegen.</p>
+            <LoginButton />
+          </div>
+        ) : (
+          <TasksView />
+        )}
+      </main>
     </div>
   )
 }
