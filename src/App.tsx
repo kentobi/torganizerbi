@@ -1,5 +1,6 @@
 import { useAuth } from './contexts/AuthContext'
 import { LoginButton } from './components/LoginButton'
+import { TasksView } from './components/TasksView'
 
 function App() {
   const { isAuthenticated, logout } = useAuth()
@@ -17,7 +18,7 @@ function App() {
     <div>
       <h1>torganizerbi</h1>
       <button onClick={logout}>Abmelden</button>
-      {/* Tasks, Notizen, Kalender kommen hier */}
+      <TasksView />
     </div>
   )
 }
