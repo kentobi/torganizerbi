@@ -10,7 +10,7 @@ export function LoginButton() {
   const login = () => {
     const redirectUri = window.location.origin + import.meta.env.BASE_URL
     const params = new URLSearchParams({
-      client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID?.trim(),
+      client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID?.replace(/^﻿/, '').trim(),
       redirect_uri: redirectUri,
       response_type: 'token',
       scope: SCOPES,
