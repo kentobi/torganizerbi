@@ -1,12 +1,12 @@
 // @ts-nocheck
-import { useState, useCallback, useRef, useEffect } from 'react'
-import { ResponsiveGridLayout } from 'react-grid-layout'
+import { useState, useCallback } from 'react'
+import { Responsive, useContainerWidth } from 'react-grid-layout'
 import { Widget } from './Widget'
 import { TasksView } from './TasksView'
 import { NotesView } from './NotesView'
 
 const LAYOUT_KEY = 'dashboard_layout'
-const LAYOUT_VERSION = 2 // bump when adding/removing widgets
+const LAYOUT_VERSION = 2
 
 const DEFAULT_LAYOUTS = {
   lg: [
@@ -41,17 +41,7 @@ function saveLayouts(layouts: unknown) {
 
 export function Dashboard() {
   const [layouts, setLayouts] = useState(loadLayouts)
-  const containerRef = useRef<HTMLDivElement>(null)
-  const [width, setWidth] = useState(1200)
-
-  useEffect(() => {
-    if (!containerRef.current) return
-    const observer = new ResizeObserver((entries) => {
-      setWidth(entries[0].contentRect.width)
-    })
-    observer.observe(containerRef.current)
-    return () => observer.disconnect()
-  }, [])
+  const { width, containerRef, mounted } = useContainerWidth()
 
   const handleLayoutChange = useCallback((_: unknown, all: unknown) => {
     setLayouts(all)
@@ -60,26 +50,28 @@ export function Dashboard() {
 
   return (
     <div ref={containerRef}>
-      <ResponsiveGridLayout
-        layouts={layouts}
-        width={width}
-        breakpoints={{ lg: 1200, md: 996, sm: 768 }}
-        cols={{ lg: 12, md: 10, sm: 6 }}
-        rowHeight={50}
-        draggableHandle=".drag-handle"
-        onLayoutChange={handleLayoutChange}
-      >
-        <div key="tasks">
-          <Widget title="Tasks">
-            <TasksView />
-          </Widget>
-        </div>
-        <div key="notes">
-          <Widget title="Notizen">
-            <NotesView />
-          </Widget>
-        </div>
-      </ResponsiveGridLayout>
+      {mounted && (
+        <Responsive
+          layouts={layouts}
+          width={width}
+          breakpoints={{ lg: 1200, md: 996, sm: 768 }}
+          cols={{ lg: 12, md: 10, sm: 6 }}
+          gridConfig={{ rowHeight: 50 }}
+          dragConfig={{ handle: '.drag-handle' }}
+          onLayoutChange={handleLayoutChange}
+        >
+          <div key="tasks">
+            <Widget title="Tasks">
+              <TasksView />
+            </Widget>
+          </div>
+          <div key="notes">
+            <Widget title="Notizen">
+              <NotesView />
+            </Widget>
+          </div>
+        </Responsive>
+      )}
     </div>
   )
 }
