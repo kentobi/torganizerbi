@@ -4,24 +4,28 @@ import { Responsive, WidthProvider } from 'react-grid-layout/legacy'
 import { Widget } from './Widget'
 import { TasksView } from './TasksView'
 import { NotesView } from './NotesView'
+import { CalendarView } from './CalendarView'
 
 const ResponsiveGrid = WidthProvider(Responsive)
 
 const LAYOUT_KEY = 'dashboard_layout'
-const LAYOUT_VERSION = 3
+const LAYOUT_VERSION = 4
 
 const DEFAULT_LAYOUTS = {
   lg: [
-    { i: 'tasks', x: 0, y: 0, w: 5, h: 10, minW: 3, minH: 4 },
-    { i: 'notes', x: 5, y: 0, w: 7, h: 10, minW: 4, minH: 4 },
+    { i: 'calendar', x: 0,  y: 0,  w: 12, h: 11, minW: 6, minH: 8 },
+    { i: 'tasks',    x: 0,  y: 11, w: 5,  h: 10, minW: 3, minH: 4 },
+    { i: 'notes',    x: 5,  y: 11, w: 7,  h: 10, minW: 4, minH: 4 },
   ],
   md: [
-    { i: 'tasks', x: 0, y: 0, w: 4, h: 10, minW: 3, minH: 4 },
-    { i: 'notes', x: 4, y: 0, w: 6, h: 10, minW: 4, minH: 4 },
+    { i: 'calendar', x: 0, y: 0,  w: 10, h: 11, minW: 6, minH: 8 },
+    { i: 'tasks',    x: 0, y: 11, w: 4,  h: 10, minW: 3, minH: 4 },
+    { i: 'notes',    x: 4, y: 11, w: 6,  h: 10, minW: 4, minH: 4 },
   ],
   sm: [
-    { i: 'tasks', x: 0, y: 0, w: 6, h: 8, minW: 3, minH: 4 },
-    { i: 'notes', x: 0, y: 8, w: 6, h: 10, minW: 3, minH: 4 },
+    { i: 'calendar', x: 0, y: 0,  w: 6, h: 11, minW: 6, minH: 8 },
+    { i: 'tasks',    x: 0, y: 11, w: 6, h: 8,  minW: 3, minH: 4 },
+    { i: 'notes',    x: 0, y: 19, w: 6, h: 10, minW: 3, minH: 4 },
   ],
 }
 
@@ -59,6 +63,11 @@ export function Dashboard() {
       onLayoutChange={handleLayoutChange}
       margin={[8, 8]}
     >
+      <div key="calendar" style={{ height: '100%' }}>
+        <Widget title="Kalender">
+          <CalendarView />
+        </Widget>
+      </div>
       <div key="tasks" style={{ height: '100%' }}>
         <Widget title="Tasks">
           <TasksView />
