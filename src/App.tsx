@@ -3,19 +3,26 @@ import { LoginButton } from './components/LoginButton'
 import { TasksView } from './components/TasksView'
 
 function App() {
-  const { isAuthenticated, logout } = useAuth()
+  const { isAuthenticated, logout, userEmail } = useAuth()
 
   return (
     <div className="min-h-screen bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100">
       <header className="border-b border-zinc-200 dark:border-zinc-800 px-4 py-3 flex items-center justify-between">
         <h1 className="text-lg font-semibold tracking-tight">torganizerbi</h1>
         {isAuthenticated && (
-          <button
-            onClick={logout}
-            className="text-sm text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
-          >
-            Abmelden
-          </button>
+          <div className="flex items-center gap-3">
+            {userEmail && (
+              <span className="text-xs text-zinc-400 dark:text-zinc-500 hidden sm:block">
+                {userEmail}
+              </span>
+            )}
+            <button
+              onClick={logout}
+              className="text-sm text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
+            >
+              Abmelden
+            </button>
+          </div>
         )}
       </header>
 
