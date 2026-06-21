@@ -50,9 +50,90 @@ function getEventTime(e: CalEvent): string {
   return e.start.dateTime.slice(11, 16)
 }
 
+function formatDisplayDate(dateStr: string): string {
+  const [y, m, d] = dateStr.split('-').map(Number)
+  return `${d}. ${MONTHS[m - 1]} ${y}`
+}
+
 function isToday(d: Date): boolean {
   const t = new Date()
   return d.getFullYear() === t.getFullYear() && d.getMonth() === t.getMonth() && d.getDate() === t.getDate()
+}
+
+function EventModal({ event, onClose, onDelete }: {
+  event: CalEvent
+  onClose: () => void
+  onDelete: (id: string) => Promise<void>
+}) {
+  const [confirming, setConfirming] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+
+  const handleDelete = async () => {
+    setDeleting(true)
+    await onDelete(event.id)
+    onClose()
+  }
+
+  const dateStr = getEventDate(event)
+  const time = getEventTime(event)
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white dark:bg-zinc-900 rounded-xl shadow-xl border border-zinc-200 dark:border-zinc-700 w-full max-w-sm mx-4 p-5 flex flex-col gap-4"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex flex-col gap-1">
+            <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">{event.summary}</h2>
+            <p className="text-sm text-zinc-500 dark:text-zinc-400">
+              {formatDisplayDate(dateStr)}
+              {time && <span className="ml-2">{time} Uhr</span>}
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 text-xl leading-none shrink-0 mt-0.5"
+          >
+            ×
+          </button>
+        </div>
+
+        <div className="border-t border-zinc-100 dark:border-zinc-800 pt-3">
+          {!confirming ? (
+            <button
+              onClick={() => setConfirming(true)}
+              className="text-sm text-red-500 hover:text-red-700 dark:hover:text-red-400 transition-colors"
+            >
+              Termin löschen
+            </button>
+          ) : (
+            <div className="flex flex-col gap-2">
+              <p className="text-sm text-zinc-600 dark:text-zinc-400">Termin wirklich löschen?</p>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleDelete}
+                  disabled={deleting}
+                  className="flex-1 py-1.5 rounded-lg bg-red-500 hover:bg-red-600 text-white text-sm font-medium transition-colors disabled:opacity-50"
+                >
+                  {deleting ? 'Löscht…' : 'Ja, löschen'}
+                </button>
+                <button
+                  onClick={() => setConfirming(false)}
+                  className="flex-1 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700 text-sm text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
+                >
+                  Abbrechen
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
 }
 
 export function CalendarView() {
@@ -62,6 +143,7 @@ export function CalendarView() {
   const [events, setEvents] = useState<CalEvent[]>([])
   const [creatingDate, setCreatingDate] = useState<string | null>(null)
   const [newTitle, setNewTitle] = useState('')
+  const [selectedEvent, setSelectedEvent] = useState<CalEvent | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
   const year = current.getFullYear()
@@ -81,6 +163,12 @@ export function CalendarView() {
   useEffect(() => {
     if (creatingDate) inputRef.current?.focus()
   }, [creatingDate])
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setSelectedEvent(null) }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
 
   const navigate = (dir: 1 | -1) => {
     setCurrent((prev) => {
@@ -119,97 +207,107 @@ export function CalendarView() {
       })()
 
   const eventsForDay = (dateStr: string) => events.filter((e) => getEventDate(e) === dateStr)
+  const maxVisible = viewMode === 'week' ? 5 : 2
 
   return (
-    <div className="flex flex-col gap-2 h-full">
-      {/* Header */}
-      <div className="flex items-center justify-between gap-2 shrink-0">
-        <div className="flex items-center gap-1">
-          <button onClick={() => navigate(-1)} className="p-1 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 text-sm">‹</button>
-          <span className="text-sm font-medium text-zinc-800 dark:text-zinc-200 min-w-36 text-center">{headerLabel}</span>
-          <button onClick={() => navigate(1)} className="p-1 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 text-sm">›</button>
-        </div>
-        <div className="flex rounded-lg overflow-hidden border border-zinc-200 dark:border-zinc-700 text-xs">
-          <button
-            onClick={() => setViewMode('month')}
-            className={`px-2.5 py-1 transition-colors ${viewMode === 'month' ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900' : 'text-zinc-500 hover:bg-zinc-50 dark:hover:bg-zinc-800'}`}
-          >
-            Monat
-          </button>
-          <button
-            onClick={() => setViewMode('week')}
-            className={`px-2.5 py-1 transition-colors ${viewMode === 'week' ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900' : 'text-zinc-500 hover:bg-zinc-50 dark:hover:bg-zinc-800'}`}
-          >
-            Woche
-          </button>
-        </div>
-      </div>
-
-      {/* Weekday headers */}
-      <div className="grid grid-cols-7 shrink-0">
-        {WEEKDAYS.map((d) => (
-          <div key={d} className="text-center text-xs font-medium text-zinc-400 dark:text-zinc-500 py-1">{d}</div>
-        ))}
-      </div>
-
-      {/* Calendar grid */}
-      <div className={`grid grid-cols-7 flex-1 ${viewMode === 'month' ? 'auto-rows-fr' : ''} gap-px bg-zinc-100 dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-800 rounded-lg overflow-hidden`}>
-        {visibleDays.map((day) => {
-          const dateStr = toDateStr(day)
-          const isCurrentMonth = day.getMonth() === month
-          const today = isToday(day)
-          const dayEvents = eventsForDay(dateStr)
-          const isCreating = creatingDate === dateStr
-
-          return (
-            <div
-              key={dateStr}
-              onClick={() => !isCreating && handleDayClick(dateStr)}
-              className={`bg-white dark:bg-zinc-900 p-1 min-h-14 cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800/80 transition-colors overflow-hidden ${viewMode === 'week' ? 'min-h-24' : ''}`}
+    <>
+      <div className="flex flex-col gap-2 h-full">
+        {/* Header */}
+        <div className="flex items-center justify-between gap-2 shrink-0">
+          <div className="flex items-center gap-1">
+            <button onClick={() => navigate(-1)} className="p-1 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 text-sm">‹</button>
+            <span className="text-sm font-medium text-zinc-800 dark:text-zinc-200 min-w-36 text-center">{headerLabel}</span>
+            <button onClick={() => navigate(1)} className="p-1 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 text-sm">›</button>
+          </div>
+          <div className="flex rounded-lg overflow-hidden border border-zinc-200 dark:border-zinc-700 text-xs">
+            <button
+              onClick={() => setViewMode('month')}
+              className={`px-2.5 py-1 transition-colors ${viewMode === 'month' ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900' : 'text-zinc-500 hover:bg-zinc-50 dark:hover:bg-zinc-800'}`}
             >
-              <div className={`text-xs w-6 h-6 flex items-center justify-center rounded-full mb-0.5 font-medium ${
-                today ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900' :
-                isCurrentMonth ? 'text-zinc-700 dark:text-zinc-300' : 'text-zinc-300 dark:text-zinc-600'
-              }`}>
-                {day.getDate()}
-              </div>
+              Monat
+            </button>
+            <button
+              onClick={() => setViewMode('week')}
+              className={`px-2.5 py-1 transition-colors ${viewMode === 'week' ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900' : 'text-zinc-500 hover:bg-zinc-50 dark:hover:bg-zinc-800'}`}
+            >
+              Woche
+            </button>
+          </div>
+        </div>
 
-              {isCreating ? (
-                <form onSubmit={handleCreate} onClick={(e) => e.stopPropagation()}>
-                  <input
-                    ref={inputRef}
-                    value={newTitle}
-                    onChange={(e) => setNewTitle(e.target.value)}
-                    onBlur={() => setCreatingDate(null)}
-                    onKeyDown={(e) => e.key === 'Escape' && setCreatingDate(null)}
-                    placeholder="Titel…"
-                    className="w-full text-xs px-1 py-0.5 rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 focus:outline-none"
-                  />
-                </form>
-              ) : (
-                <div className="flex flex-col gap-0.5">
-                  {dayEvents.slice(0, viewMode === 'week' ? 5 : 2).map((ev) => (
-                    <div
-                      key={ev.id}
-                      onClick={(e) => { e.stopPropagation(); handleDelete(ev.id) }}
-                      title={`${ev.summary} – klicken zum Löschen`}
-                      className="text-xs px-1 py-0.5 rounded bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300 truncate cursor-pointer hover:bg-red-100 dark:hover:bg-red-900/30 hover:text-red-700 dark:hover:text-red-400 transition-colors"
-                    >
-                      {getEventTime(ev) && <span className="opacity-70 mr-1">{getEventTime(ev)}</span>}
-                      {ev.summary}
-                    </div>
-                  ))}
-                  {dayEvents.length > (viewMode === 'week' ? 5 : 2) && (
-                    <div className="text-xs text-zinc-400 dark:text-zinc-500 px-1">
-                      +{dayEvents.length - (viewMode === 'week' ? 5 : 2)} mehr
-                    </div>
-                  )}
+        {/* Weekday headers */}
+        <div className="grid grid-cols-7 shrink-0">
+          {WEEKDAYS.map((d) => (
+            <div key={d} className="text-center text-xs font-medium text-zinc-400 dark:text-zinc-500 py-1">{d}</div>
+          ))}
+        </div>
+
+        {/* Calendar grid */}
+        <div className={`grid grid-cols-7 flex-1 ${viewMode === 'month' ? 'auto-rows-fr' : ''} gap-px bg-zinc-100 dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-800 rounded-lg overflow-hidden`}>
+          {visibleDays.map((day) => {
+            const dateStr = toDateStr(day)
+            const isCurrentMonth = day.getMonth() === month
+            const today = isToday(day)
+            const dayEvents = eventsForDay(dateStr)
+            const isCreating = creatingDate === dateStr
+
+            return (
+              <div
+                key={dateStr}
+                onClick={() => !isCreating && handleDayClick(dateStr)}
+                className={`bg-white dark:bg-zinc-900 p-1 min-h-14 cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800/80 transition-colors overflow-hidden ${viewMode === 'week' ? 'min-h-24' : ''}`}
+              >
+                <div className={`text-xs w-6 h-6 flex items-center justify-center rounded-full mb-0.5 font-medium ${
+                  today ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900' :
+                  isCurrentMonth ? 'text-zinc-700 dark:text-zinc-300' : 'text-zinc-300 dark:text-zinc-600'
+                }`}>
+                  {day.getDate()}
                 </div>
-              )}
-            </div>
-          )
-        })}
+
+                {isCreating ? (
+                  <form onSubmit={handleCreate} onClick={(e) => e.stopPropagation()}>
+                    <input
+                      ref={inputRef}
+                      value={newTitle}
+                      onChange={(e) => setNewTitle(e.target.value)}
+                      onBlur={() => setCreatingDate(null)}
+                      onKeyDown={(e) => e.key === 'Escape' && setCreatingDate(null)}
+                      placeholder="Titel…"
+                      className="w-full text-xs px-1 py-0.5 rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 focus:outline-none"
+                    />
+                  </form>
+                ) : (
+                  <div className="flex flex-col gap-0.5">
+                    {dayEvents.slice(0, maxVisible).map((ev) => (
+                      <div
+                        key={ev.id}
+                        onClick={(e) => { e.stopPropagation(); setSelectedEvent(ev) }}
+                        className="text-xs px-1 py-0.5 rounded bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300 truncate cursor-pointer hover:bg-blue-200 dark:hover:bg-blue-800/50 transition-colors"
+                      >
+                        {getEventTime(ev) && <span className="opacity-70 mr-1">{getEventTime(ev)}</span>}
+                        {ev.summary}
+                      </div>
+                    ))}
+                    {dayEvents.length > maxVisible && (
+                      <div className="text-xs text-zinc-400 dark:text-zinc-500 px-1">
+                        +{dayEvents.length - maxVisible} mehr
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
       </div>
-    </div>
+
+      {selectedEvent && (
+        <EventModal
+          event={selectedEvent}
+          onClose={() => setSelectedEvent(null)}
+          onDelete={handleDelete}
+        />
+      )}
+    </>
   )
 }
