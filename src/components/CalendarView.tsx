@@ -55,15 +55,6 @@ function getEventEndDate(e: CalEvent): string {
   return e.end.dateTime?.slice(0, 10) ?? ''
 }
 
-function eventOccursOnDate(e: CalEvent, dateStr: string): boolean {
-  const start = getEventDate(e)
-  if (e.end.date) {
-    // end.date is exclusive: event spans [start, end.date)
-    return dateStr >= start && dateStr < e.end.date
-  }
-  const end = e.end.dateTime?.slice(0, 10) ?? start
-  return dateStr >= start && dateStr <= end
-}
 
 function getEventTime(e: CalEvent): string {
   if (!e.start.dateTime) return ''
@@ -78,6 +69,54 @@ function formatDisplayDate(dateStr: string): string {
 function isToday(d: Date): boolean {
   const t = new Date()
   return d.getFullYear() === t.getFullYear() && d.getMonth() === t.getMonth() && d.getDate() === t.getDate()
+}
+
+type EventSegment = {
+  event: CalEvent
+  startCol: number
+  span: number
+  isStart: boolean
+  isEnd: boolean
+  row: number
+}
+
+function getWeekSegments(allEvents: CalEvent[], weekDays: Date[]): EventSegment[] {
+  const segs: EventSegment[] = []
+
+  for (const event of allEvents) {
+    const startStr = getEventDate(event)
+    const endStr = getEventEndDate(event)
+    let startCol = -1, endCol = -1
+    for (let i = 0; i < weekDays.length; i++) {
+      const d = toDateStr(weekDays[i])
+      if (d >= startStr && d <= endStr) {
+        if (startCol === -1) startCol = i
+        endCol = i
+      }
+    }
+    if (startCol === -1) continue
+    segs.push({
+      event,
+      startCol,
+      span: endCol - startCol + 1,
+      isStart: toDateStr(weekDays[startCol]) === startStr,
+      isEnd: toDateStr(weekDays[endCol]) === endStr,
+      row: 0,
+    })
+  }
+
+  // Longer events first so they get lower (more prominent) rows
+  segs.sort((a, b) => b.span - a.span || a.startCol - b.startCol)
+
+  const rowEnds: number[] = []
+  for (const seg of segs) {
+    let row = 0
+    while (row < rowEnds.length && rowEnds[row] >= seg.startCol) row++
+    seg.row = row
+    rowEnds[row] = seg.startCol + seg.span - 1
+  }
+
+  return segs
 }
 
 function EventModal({ event, onClose, onDelete }: {
@@ -230,9 +269,6 @@ export function CalendarView() {
         return `${days[0].getDate()}. – ${days[6].getDate()}. ${MONTHS[days[6].getMonth()]} ${days[6].getFullYear()}`
       })()
 
-  const eventsForDay = (dateStr: string) => events.filter((e) => eventOccursOnDate(e, dateStr))
-  const maxVisible = viewMode === 'week' ? 5 : 2
-
   return (
     <>
       <div className="flex flex-col gap-2 h-full">
@@ -266,63 +302,120 @@ export function CalendarView() {
           ))}
         </div>
 
-        {/* Calendar grid */}
-        <div className={`grid grid-cols-7 flex-1 ${viewMode === 'month' ? 'auto-rows-fr' : ''} gap-px bg-zinc-100 dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-800 rounded-lg overflow-hidden`}>
-          {visibleDays.map((day) => {
-            const dateStr = toDateStr(day)
-            const isCurrentMonth = day.getMonth() === month
-            const today = isToday(day)
-            const dayEvents = eventsForDay(dateStr)
-            const isCreating = creatingDate === dateStr
+        {/* Calendar grid – split into week rows for spanning event bars */}
+        {(() => {
+          const weeks: Date[][] = []
+          for (let i = 0; i < visibleDays.length; i += 7) weeks.push(visibleDays.slice(i, i + 7))
+          const MAX_ROWS = viewMode === 'week' ? 5 : 2
 
-            return (
-              <div
-                key={dateStr}
-                onClick={() => !isCreating && handleDayClick(dateStr)}
-                className={`bg-white dark:bg-zinc-900 p-1 min-h-14 cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800/80 transition-colors overflow-hidden ${viewMode === 'week' ? 'min-h-24' : ''}`}
-              >
-                <div className={`text-xs w-6 h-6 flex items-center justify-center rounded-full mb-0.5 font-medium ${
-                  today ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900' :
-                  isCurrentMonth ? 'text-zinc-700 dark:text-zinc-300' : 'text-zinc-300 dark:text-zinc-600'
-                }`}>
-                  {day.getDate()}
-                </div>
+          return (
+            <div className="flex flex-col flex-1 gap-px bg-zinc-100 dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-800 rounded-lg overflow-hidden">
+              {weeks.map((weekDays, weekIdx) => {
+                const segs = getWeekSegments(events, weekDays)
+                const visibleRowCount = Math.min(MAX_ROWS, segs.reduce((m, s) => Math.max(m, s.row + 1), 0))
+                const visibleSegs = segs.filter(s => s.row < MAX_ROWS)
 
-                {isCreating ? (
-                  <form onSubmit={handleCreate} onClick={(e) => e.stopPropagation()}>
-                    <input
-                      ref={inputRef}
-                      value={newTitle}
-                      onChange={(e) => setNewTitle(e.target.value)}
-                      onBlur={() => setCreatingDate(null)}
-                      onKeyDown={(e) => e.key === 'Escape' && setCreatingDate(null)}
-                      placeholder="Titel…"
-                      className="w-full text-xs px-1 py-0.5 rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 focus:outline-none"
-                    />
-                  </form>
-                ) : (
-                  <div className="flex flex-col gap-0.5">
-                    {dayEvents.slice(0, maxVisible).map((ev) => (
-                      <div
-                        key={ev.id}
-                        onClick={(e) => { e.stopPropagation(); setSelectedEvent(ev) }}
-                        className="text-xs px-1 py-0.5 rounded bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300 truncate cursor-pointer hover:bg-blue-200 dark:hover:bg-blue-800/50 transition-colors"
-                      >
-                        {getEventTime(ev) && <span className="opacity-70 mr-1">{getEventTime(ev)}</span>}
-                        {ev.summary}
+                const morePerCol: number[] = Array(7).fill(0)
+                for (const seg of segs.filter(s => s.row >= MAX_ROWS)) {
+                  for (let c = seg.startCol; c < seg.startCol + seg.span; c++) morePerCol[c]++
+                }
+                const hasMore = morePerCol.some(Boolean)
+
+                return (
+                  <div key={weekIdx} className="flex-1 flex flex-col bg-white dark:bg-zinc-900 min-h-0">
+                    {/* Day number row */}
+                    <div className="grid grid-cols-7 gap-px bg-zinc-100 dark:bg-zinc-800">
+                      {weekDays.map(day => {
+                        const dateStr = toDateStr(day)
+                        const isCurrentMonth = day.getMonth() === month
+                        const today = isToday(day)
+                        const isCreating = creatingDate === dateStr
+                        return (
+                          <div
+                            key={dateStr}
+                            onClick={() => !isCreating && handleDayClick(dateStr)}
+                            className="bg-white dark:bg-zinc-900 px-1 pt-1 pb-0.5 cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800/80 transition-colors"
+                          >
+                            <div className={`text-xs w-6 h-6 flex items-center justify-center rounded-full font-medium ${
+                              today ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900'
+                              : isCurrentMonth ? 'text-zinc-700 dark:text-zinc-300'
+                              : 'text-zinc-300 dark:text-zinc-600'
+                            }`}>
+                              {day.getDate()}
+                            </div>
+                            {isCreating && (
+                              <form onSubmit={handleCreate} onClick={e => e.stopPropagation()}>
+                                <input
+                                  ref={inputRef}
+                                  value={newTitle}
+                                  onChange={e => setNewTitle(e.target.value)}
+                                  onBlur={() => setCreatingDate(null)}
+                                  onKeyDown={e => e.key === 'Escape' && setCreatingDate(null)}
+                                  placeholder="Titel…"
+                                  className="mt-0.5 w-full text-xs px-1 py-0.5 rounded border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 focus:outline-none"
+                                />
+                              </form>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+
+                    {/* Event bar rows */}
+                    {Array.from({ length: visibleRowCount }, (_, row) => (
+                      <div key={row} className="grid grid-cols-7 h-5">
+                        {visibleSegs.filter(s => s.row === row).map(seg => (
+                          <div
+                            key={seg.event.id}
+                            style={{ gridColumn: `${seg.startCol + 1} / span ${seg.span}` }}
+                            onClick={e => { e.stopPropagation(); setSelectedEvent(seg.event) }}
+                            title={seg.event.summary}
+                            className={[
+                              'my-0.5 h-4 flex items-center text-xs truncate cursor-pointer',
+                              'bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300',
+                              'hover:bg-blue-200 dark:hover:bg-blue-800/50 transition-colors',
+                              seg.isStart ? 'ml-0.5 rounded-l-full pl-2' : '',
+                              seg.isEnd ? 'mr-0.5 rounded-r-full' : '',
+                            ].filter(Boolean).join(' ')}
+                          >
+                            {seg.isStart && (
+                              <span className="truncate leading-none">
+                                {getEventTime(seg.event) && <span className="opacity-70 mr-1">{getEventTime(seg.event)}</span>}
+                                {seg.event.summary}
+                              </span>
+                            )}
+                          </div>
+                        ))}
                       </div>
                     ))}
-                    {dayEvents.length > maxVisible && (
-                      <div className="text-xs text-zinc-400 dark:text-zinc-500 px-1">
-                        +{dayEvents.length - maxVisible} mehr
+
+                    {/* +N more */}
+                    {hasMore && (
+                      <div className="grid grid-cols-7 h-4">
+                        {morePerCol.map((n, col) => n > 0 ? (
+                          <div key={col} style={{ gridColumn: col + 1 }} className="text-xs text-zinc-400 dark:text-zinc-500 px-1.5">
+                            +{n}
+                          </div>
+                        ) : null)}
                       </div>
                     )}
+
+                    {/* Clickable empty area below events */}
+                    <div className="flex-1 grid grid-cols-7 gap-px bg-zinc-100 dark:bg-zinc-800">
+                      {weekDays.map(day => (
+                        <div
+                          key={`sp-${toDateStr(day)}`}
+                          onClick={() => handleDayClick(toDateStr(day))}
+                          className="bg-white dark:bg-zinc-900 cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800/80 transition-colors"
+                        />
+                      ))}
+                    </div>
                   </div>
-                )}
-              </div>
-            )
-          })}
-        </div>
+                )
+              })}
+            </div>
+          )
+        })()}
       </div>
 
       {selectedEvent && (
