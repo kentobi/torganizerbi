@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, type FormEvent } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { getEvents, createEvent, deleteEvent } from '../api/calendar'
 import type { CalEvent } from '../api/calendar'
@@ -45,6 +45,26 @@ function getEventDate(e: CalEvent): string {
   return e.start.date ?? e.start.dateTime?.slice(0, 10) ?? ''
 }
 
+function getEventEndDate(e: CalEvent): string {
+  if (e.end.date) {
+    // Google Calendar end.date is exclusive for all-day events
+    const d = new Date(e.end.date)
+    d.setDate(d.getDate() - 1)
+    return toDateStr(d)
+  }
+  return e.end.dateTime?.slice(0, 10) ?? ''
+}
+
+function eventOccursOnDate(e: CalEvent, dateStr: string): boolean {
+  const start = getEventDate(e)
+  if (e.end.date) {
+    // end.date is exclusive: event spans [start, end.date)
+    return dateStr >= start && dateStr < e.end.date
+  }
+  const end = e.end.dateTime?.slice(0, 10) ?? start
+  return dateStr >= start && dateStr <= end
+}
+
 function getEventTime(e: CalEvent): string {
   if (!e.start.dateTime) return ''
   return e.start.dateTime.slice(11, 16)
@@ -74,8 +94,12 @@ function EventModal({ event, onClose, onDelete }: {
     onClose()
   }
 
-  const dateStr = getEventDate(event)
+  const startStr = getEventDate(event)
+  const endStr = getEventEndDate(event)
   const time = getEventTime(event)
+  const dateLabel = startStr !== endStr
+    ? `${formatDisplayDate(startStr)} – ${formatDisplayDate(endStr)}`
+    : formatDisplayDate(startStr)
 
   return (
     <div
@@ -90,7 +114,7 @@ function EventModal({ event, onClose, onDelete }: {
           <div className="flex flex-col gap-1">
             <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">{event.summary}</h2>
             <p className="text-sm text-zinc-500 dark:text-zinc-400">
-              {formatDisplayDate(dateStr)}
+              {dateLabel}
               {time && <span className="ml-2">{time} Uhr</span>}
             </p>
           </div>
@@ -184,7 +208,7 @@ export function CalendarView() {
     setNewTitle('')
   }
 
-  const handleCreate = async (e: FormEvent) => {
+  const handleCreate = async (e: { preventDefault(): void }) => {
     e.preventDefault()
     if (!accessToken || !creatingDate || !newTitle.trim()) return
     const ev = await createEvent(accessToken, newTitle.trim(), creatingDate)
@@ -206,7 +230,7 @@ export function CalendarView() {
         return `${days[0].getDate()}. – ${days[6].getDate()}. ${MONTHS[days[6].getMonth()]} ${days[6].getFullYear()}`
       })()
 
-  const eventsForDay = (dateStr: string) => events.filter((e) => getEventDate(e) === dateStr)
+  const eventsForDay = (dateStr: string) => events.filter((e) => eventOccursOnDate(e, dateStr))
   const maxVisible = viewMode === 'week' ? 5 : 2
 
   return (
