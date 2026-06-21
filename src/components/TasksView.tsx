@@ -7,7 +7,9 @@ import type { TaskList, Task } from '../api/tasks'
 export function TasksView() {
   const { accessToken } = useAuth()
   const [lists, setLists] = useState<TaskList[]>([])
-  const [selectedListId, setSelectedListId] = useState<string | null>(null)
+  const [selectedListId, setSelectedListId] = useState<string | null>(
+    () => localStorage.getItem('tasks_selected_list')
+  )
   const [tasks, setTasks] = useState<Task[]>([])
   const [newTitle, setNewTitle] = useState('')
   const [loading, setLoading] = useState(true)
@@ -18,7 +20,10 @@ export function TasksView() {
     getTaskLists(accessToken)
       .then((data) => {
         setLists(data)
-        if (data.length > 0) setSelectedListId(data[0].id)
+        const saved = localStorage.getItem('tasks_selected_list')
+        const validId = saved && data.some(l => l.id === saved) ? saved : data[0]?.id ?? null
+        setSelectedListId(validId)
+        if (validId) localStorage.setItem('tasks_selected_list', validId)
       })
       .catch(() => setError('Fehler beim Laden der Listen'))
       .finally(() => setLoading(false))
@@ -62,7 +67,10 @@ export function TasksView() {
     <div className="flex flex-col gap-4">
       <select
         value={selectedListId ?? ''}
-        onChange={(e) => setSelectedListId(e.target.value)}
+        onChange={(e) => {
+          setSelectedListId(e.target.value)
+          localStorage.setItem('tasks_selected_list', e.target.value)
+        }}
         className="w-full text-sm px-3 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-400"
       >
         {lists.map((l) => (
