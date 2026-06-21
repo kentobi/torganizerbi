@@ -5,4 +5,7 @@ import tailwindcss from '@tailwindcss/vite'
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   base: '/torganizerbi/',
+  define: {
+    'process.env.NODE_ENV': JSON.stringify('production'),
+  },
 })
