@@ -1,12 +1,10 @@
 import { createContext, useContext, useState, useEffect } from 'react'
 import type { ReactNode } from 'react'
-import { googleLogout } from '@react-oauth/google'
 
 interface AuthState {
   accessToken: string | null
   userEmail: string | null
   isAuthenticated: boolean
-  setToken: (token: string) => void
   logout: () => void
 }
 
@@ -23,6 +21,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.getItem(EMAIL_KEY)
   )
 
+  // Handle OAuth redirect: extract token from URL hash after Google redirects back
+  useEffect(() => {
+    if (!window.location.hash.includes('access_token')) return
+    const params = new URLSearchParams(window.location.hash.slice(1))
+    const token = params.get('access_token')
+    if (!token) return
+    localStorage.setItem(TOKEN_KEY, token)
+    setAccessToken(token)
+    window.history.replaceState(null, '', window.location.pathname)
+  }, [])
+
+  // Fetch user email when we have a token but no email cached
   useEffect(() => {
     if (!accessToken || userEmail) return
     fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
@@ -38,13 +48,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .catch(() => {})
   }, [accessToken, userEmail])
 
-  const setToken = (token: string) => {
-    localStorage.setItem(TOKEN_KEY, token)
-    setAccessToken(token)
-  }
-
   const logout = () => {
-    googleLogout()
     localStorage.removeItem(TOKEN_KEY)
     localStorage.removeItem(EMAIL_KEY)
     setAccessToken(null)
@@ -52,7 +56,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ accessToken, userEmail, isAuthenticated: !!accessToken, setToken, logout }}>
+    <AuthContext.Provider value={{ accessToken, userEmail, isAuthenticated: !!accessToken, logout }}>
       {children}
     </AuthContext.Provider>
   )

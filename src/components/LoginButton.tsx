@@ -1,24 +1,27 @@
-import { useGoogleLogin } from '@react-oauth/google'
-import { useAuth } from '../contexts/AuthContext'
-
 const SCOPES = [
   'https://www.googleapis.com/auth/tasks',
   'https://www.googleapis.com/auth/drive.file',
   'https://www.googleapis.com/auth/calendar',
+  'email',
+  'profile',
 ].join(' ')
 
 export function LoginButton() {
-  const { setToken } = useAuth()
-
-  const login = useGoogleLogin({
-    scope: SCOPES,
-    onSuccess: (response) => setToken(response.access_token),
-    onError: () => console.error('Google Login fehlgeschlagen'),
-  })
+  const login = () => {
+    const redirectUri = window.location.origin + import.meta.env.BASE_URL
+    const params = new URLSearchParams({
+      client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
+      redirect_uri: redirectUri,
+      response_type: 'token',
+      scope: SCOPES,
+      include_granted_scopes: 'true',
+    })
+    window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params}`
+  }
 
   return (
     <button
-      onClick={() => login()}
+      onClick={login}
       className="flex items-center gap-3 px-5 py-2.5 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-700 text-sm font-medium transition-colors shadow-sm"
     >
       <svg className="w-4 h-4" viewBox="0 0 24 24" aria-hidden="true">
