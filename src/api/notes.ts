@@ -1,49 +1,13 @@
+import { driveRequest, getOrCreateFolder } from './drive'
+
 const DRIVE_BASE = 'https://www.googleapis.com/drive/v3'
 const UPLOAD_BASE = 'https://www.googleapis.com/upload/drive/v3'
-const FOLDER_NAME = 'torganizer-notes'
-
-async function driveRequest<T>(url: string, token: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(url, {
-    ...options,
-    headers: { Authorization: `Bearer ${token}`, ...options?.headers },
-  })
-  if (!res.ok) throw new Error(`Drive API ${res.status}`)
-  if (res.status === 204) return undefined as T
-  return res.json()
-}
 
 export interface Note {
   id: string
   name: string
   title: string
   modifiedTime: string
-}
-
-let cachedFolderId: string | null = null
-
-async function getOrCreateFolder(token: string): Promise<string> {
-  if (cachedFolderId) return cachedFolderId
-
-  const search = await driveRequest<{ files: Array<{ id: string }> }>(
-    `${DRIVE_BASE}/files?q=name='${FOLDER_NAME}' and mimeType='application/vnd.google-apps.folder' and trashed=false&fields=files(id)`,
-    token
-  )
-  if (search.files.length > 0) {
-    cachedFolderId = search.files[0].id
-    return cachedFolderId
-  }
-
-  const folder = await driveRequest<{ id: string }>(
-    `${DRIVE_BASE}/files`,
-    token,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: FOLDER_NAME, mimeType: 'application/vnd.google-apps.folder' }),
-    }
-  )
-  cachedFolderId = folder.id
-  return cachedFolderId
 }
 
 function filenameToTitle(name: string): string {
@@ -61,7 +25,7 @@ function titleToFilename(title: string): string {
 export async function listNotes(token: string): Promise<Note[]> {
   const folderId = await getOrCreateFolder(token)
   const data = await driveRequest<{ files: Array<{ id: string; name: string; modifiedTime: string }> }>(
-    `${DRIVE_BASE}/files?q='${folderId}' in parents and trashed=false&fields=files(id,name,modifiedTime)&orderBy=modifiedTime desc`,
+    `${DRIVE_BASE}/files?q='${folderId}' in parents and name != 'links.md' and trashed=false&fields=files(id,name,modifiedTime)&orderBy=modifiedTime desc`,
     token
   )
   return (data.files ?? []).map((f) => ({

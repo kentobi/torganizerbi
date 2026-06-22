@@ -5,27 +5,31 @@ import { Widget } from './Widget'
 import { TasksView } from './TasksView'
 import { NotesView } from './NotesView'
 import { CalendarView } from './CalendarView'
+import { LinksView } from './LinksView'
 
 const ResponsiveGrid = WidthProvider(Responsive)
 
 const LAYOUT_KEY = 'dashboard_layout'
-const LAYOUT_VERSION = 4
+const LAYOUT_VERSION = 5
 
 const DEFAULT_LAYOUTS = {
   lg: [
     { i: 'calendar', x: 0,  y: 0,  w: 12, h: 11, minW: 6, minH: 8 },
     { i: 'tasks',    x: 0,  y: 11, w: 5,  h: 10, minW: 3, minH: 4 },
     { i: 'notes',    x: 5,  y: 11, w: 7,  h: 10, minW: 4, minH: 4 },
+    { i: 'links',    x: 0,  y: 21, w: 5,  h: 6,  minW: 3, minH: 3 },
   ],
   md: [
     { i: 'calendar', x: 0, y: 0,  w: 10, h: 11, minW: 6, minH: 8 },
     { i: 'tasks',    x: 0, y: 11, w: 4,  h: 10, minW: 3, minH: 4 },
     { i: 'notes',    x: 4, y: 11, w: 6,  h: 10, minW: 4, minH: 4 },
+    { i: 'links',    x: 0, y: 21, w: 4,  h: 6,  minW: 3, minH: 3 },
   ],
   sm: [
     { i: 'calendar', x: 0, y: 0,  w: 6, h: 11, minW: 6, minH: 8 },
     { i: 'tasks',    x: 0, y: 11, w: 6, h: 8,  minW: 3, minH: 4 },
     { i: 'notes',    x: 0, y: 19, w: 6, h: 10, minW: 3, minH: 4 },
+    { i: 'links',    x: 0, y: 29, w: 6, h: 6,  minW: 3, minH: 3 },
   ],
 }
 
@@ -76,6 +80,11 @@ export function Dashboard() {
       <div key="notes" style={{ height: '100%' }}>
         <Widget title="Notizen">
           <NotesView />
+        </Widget>
+      </div>
+      <div key="links" style={{ height: '100%' }}>
+        <Widget title="Links">
+          <LinksView />
         </Widget>
       </div>
     </ResponsiveGrid>
