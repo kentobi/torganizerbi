@@ -120,20 +120,21 @@ function getWeekSegments(allEvents: CalEvent[], weekDays: Date[]): EventSegment[
   // Longer events first so they get lower (more prominent) rows
   segs.sort((a, b) => b.span - a.span || a.startCol - b.startCol)
 
-  const rowIntervals: Array<Array<{ start: number; end: number }>> = []
+  // occupied[row][col] = true means that column is taken in that row
+  const occupied: boolean[][] = []
   for (const seg of segs) {
-    const segEnd = seg.startCol + seg.span - 1
     let row = 0
-    while (true) {
-      if (row >= rowIntervals.length) { rowIntervals.push([]); break }
-      const conflicts = rowIntervals[row].some(
-        iv => seg.startCol <= iv.end && segEnd >= iv.start
-      )
-      if (!conflicts) break
-      row++
+    let placed = false
+    while (!placed) {
+      if (row >= occupied.length) occupied.push(new Array(7).fill(false))
+      let conflict = false
+      for (let c = seg.startCol; c < seg.startCol + seg.span; c++) {
+        if (occupied[row][c]) { conflict = true; break }
+      }
+      if (conflict) { row++ } else { placed = true }
     }
     seg.row = row
-    rowIntervals[row].push({ start: seg.startCol, end: segEnd })
+    for (let c = seg.startCol; c < seg.startCol + seg.span; c++) occupied[row][c] = true
   }
 
   return segs
