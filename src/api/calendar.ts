@@ -36,7 +36,26 @@ export async function getEvents(token: string, timeMin: Date, timeMax: Date): Pr
   return data.items ?? []
 }
 
-export async function createEvent(token: string, summary: string, date: string): Promise<CalEvent> {
+export async function createEvent(
+  token: string,
+  summary: string,
+  date: string,
+  time?: string,
+): Promise<CalEvent> {
+  if (time) {
+    // Timed event: interpret as local time, convert to UTC for API
+    const start = new Date(`${date}T${time}:00`)
+    const end = new Date(start.getTime() + 60 * 60 * 1000)
+    return calRequest<CalEvent>(`${BASE}/calendars/primary/events`, token, {
+      method: 'POST',
+      body: JSON.stringify({
+        summary,
+        start: { dateTime: start.toISOString() },
+        end: { dateTime: end.toISOString() },
+      }),
+    })
+  }
+  // All-day event
   const next = new Date(date)
   next.setDate(next.getDate() + 1)
   const endDate = next.toISOString().slice(0, 10)

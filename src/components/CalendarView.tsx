@@ -66,6 +66,18 @@ function formatDisplayDate(dateStr: string): string {
   return `${d}. ${MONTHS[m - 1]} ${y}`
 }
 
+function parseEventInput(input: string): { title: string; time?: string } {
+  // Matches: "13:00h Turnen", "13:00 Turnen", "9:00h Turnen", "13:00h", "13:00"
+  const match = input.trim().match(/^(\d{1,2}:\d{2})h?\s*(.*)$/)
+  if (match) {
+    const [, rawTime, rest] = match
+    const [h, m] = rawTime.split(':')
+    const time = `${h.padStart(2, '0')}:${m}`
+    return { title: rest.trim(), time }
+  }
+  return { title: input.trim() }
+}
+
 function isToday(d: Date): boolean {
   const t = new Date()
   return d.getFullYear() === t.getFullYear() && d.getMonth() === t.getMonth() && d.getDate() === t.getDate()
@@ -250,7 +262,8 @@ export function CalendarView() {
   const handleCreate = async (e: { preventDefault(): void }) => {
     e.preventDefault()
     if (!accessToken || !creatingDate || !newTitle.trim()) return
-    const ev = await createEvent(accessToken, newTitle.trim(), creatingDate)
+    const { title, time } = parseEventInput(newTitle)
+    const ev = await createEvent(accessToken, title || newTitle.trim(), creatingDate, time)
     setEvents((prev) => [...prev, ev])
     setCreatingDate(null)
     setNewTitle('')
