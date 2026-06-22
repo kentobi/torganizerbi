@@ -120,8 +120,6 @@ function getWeekSegments(allEvents: CalEvent[], weekDays: Date[]): EventSegment[
   // Longer events first so they get lower (more prominent) rows
   segs.sort((a, b) => b.span - a.span || a.startCol - b.startCol)
 
-  console.log(`[Cal] ${toDateStr(weekDays[0])}–${toDateStr(weekDays[6])}: ${segs.length} segs before assignment:`, segs.map(s => `${s.event.summary.slice(0,15)} col${s.startCol}+${s.span}`))
-
   // occupied[row][col] = true means that column is taken in that row
   const occupied: boolean[][] = []
   for (const seg of segs) {
@@ -138,8 +136,6 @@ function getWeekSegments(allEvents: CalEvent[], weekDays: Date[]): EventSegment[
     seg.row = row
     for (let c = seg.startCol; c < seg.startCol + seg.span; c++) occupied[row][c] = true
   }
-
-  console.log(`[Cal] ${toDateStr(weekDays[0])} result:`, segs.map(s => `${s.event.summary.slice(0,15)} col${s.startCol}+${s.span}→row${s.row}`))
 
   return segs
 }
@@ -348,7 +344,7 @@ export function CalendarView() {
                 return (
                   <div key={weekIdx} className="flex-1 flex flex-col bg-white dark:bg-zinc-900 min-h-0">
                     {/* Day number row */}
-                    <div className="grid grid-cols-7 gap-px bg-zinc-100 dark:bg-zinc-800">
+                    <div className="grid grid-cols-7 gap-px bg-zinc-100 dark:bg-zinc-800 shrink-0">
                       {weekDays.map((day, dayIdx) => {
                         const dateStr = toDateStr(day)
                         const isCurrentMonth = day.getMonth() === month
@@ -393,7 +389,7 @@ export function CalendarView() {
 
                     {/* Event bar rows */}
                     {Array.from({ length: visibleRowCount }, (_, row) => (
-                      <div key={row} className="grid grid-cols-7 h-5">
+                      <div key={row} className="grid grid-cols-7 h-5 shrink-0">
                         {visibleSegs.filter(s => s.row === row).map(seg => (
                           <div
                             key={seg.event.id}
