@@ -332,29 +332,33 @@ export function CalendarView() {
                 for (const seg of segs.filter(s => s.row >= MAX_ROWS)) {
                   for (let c = seg.startCol; c < seg.startCol + seg.span; c++) morePerCol[c]++
                 }
-                const hasMore = morePerCol.some(Boolean)
-
                 return (
                   <div key={weekIdx} className="flex-1 flex flex-col bg-white dark:bg-zinc-900 min-h-0">
                     {/* Day number row */}
                     <div className="grid grid-cols-7 gap-px bg-zinc-100 dark:bg-zinc-800">
-                      {weekDays.map(day => {
+                      {weekDays.map((day, dayIdx) => {
                         const dateStr = toDateStr(day)
                         const isCurrentMonth = day.getMonth() === month
                         const today = isToday(day)
                         const isCreating = creatingDate === dateStr
+                        const moreCount = morePerCol[dayIdx]
                         return (
                           <div
                             key={dateStr}
                             onClick={() => !isCreating && handleDayClick(dateStr)}
                             className="bg-white dark:bg-zinc-900 px-1 pt-1 pb-0.5 cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800/80 transition-colors"
                           >
-                            <div className={`text-xs w-6 h-6 flex items-center justify-center rounded-full font-medium ${
-                              today ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900'
-                              : isCurrentMonth ? 'text-zinc-700 dark:text-zinc-300'
-                              : 'text-zinc-300 dark:text-zinc-600'
-                            }`}>
-                              {day.getDate()}
+                            <div className="flex items-center justify-between">
+                              <div className={`text-xs w-6 h-6 flex items-center justify-center rounded-full font-medium ${
+                                today ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900'
+                                : isCurrentMonth ? 'text-zinc-700 dark:text-zinc-300'
+                                : 'text-zinc-300 dark:text-zinc-600'
+                              }`}>
+                                {day.getDate()}
+                              </div>
+                              {moreCount > 0 && (
+                                <span className="text-xs text-zinc-400 dark:text-zinc-500 pr-0.5">+{moreCount}</span>
+                              )}
                             </div>
                             {isCreating && (
                               <form onSubmit={handleCreate} onClick={e => e.stopPropagation()}>
@@ -401,17 +405,6 @@ export function CalendarView() {
                         ))}
                       </div>
                     ))}
-
-                    {/* +N more */}
-                    {hasMore && (
-                      <div className="grid grid-cols-7 h-4">
-                        {morePerCol.map((n, col) => n > 0 ? (
-                          <div key={col} style={{ gridColumn: col + 1 }} className="text-xs text-zinc-400 dark:text-zinc-500 px-1.5">
-                            +{n}
-                          </div>
-                        ) : null)}
-                      </div>
-                    )}
 
                     {/* Clickable empty area below events */}
                     <div className="flex-1 grid grid-cols-7 gap-px bg-zinc-100 dark:bg-zinc-800">
