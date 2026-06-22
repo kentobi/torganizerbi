@@ -120,12 +120,20 @@ function getWeekSegments(allEvents: CalEvent[], weekDays: Date[]): EventSegment[
   // Longer events first so they get lower (more prominent) rows
   segs.sort((a, b) => b.span - a.span || a.startCol - b.startCol)
 
-  const rowEnds: number[] = []
+  const rowIntervals: Array<Array<{ start: number; end: number }>> = []
   for (const seg of segs) {
+    const segEnd = seg.startCol + seg.span - 1
     let row = 0
-    while (row < rowEnds.length && rowEnds[row] >= seg.startCol) row++
+    while (true) {
+      if (row >= rowIntervals.length) { rowIntervals.push([]); break }
+      const conflicts = rowIntervals[row].some(
+        iv => seg.startCol <= iv.end && segEnd >= iv.start
+      )
+      if (!conflicts) break
+      row++
+    }
     seg.row = row
-    rowEnds[row] = seg.startCol + seg.span - 1
+    rowIntervals[row].push({ start: seg.startCol, end: segEnd })
   }
 
   return segs
