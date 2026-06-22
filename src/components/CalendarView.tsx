@@ -387,13 +387,16 @@ export function CalendarView() {
                       })}
                     </div>
 
-                    {/* Event bar rows */}
-                    {Array.from({ length: visibleRowCount }, (_, row) => (
-                      <div key={row} className="grid grid-cols-7 h-5 shrink-0">
-                        {visibleSegs.filter(s => s.row === row).map(seg => (
+                    {/* Event bars – single grid with explicit row + column placement */}
+                    {visibleRowCount > 0 && (
+                      <div
+                        className="grid grid-cols-7 shrink-0"
+                        style={{ gridTemplateRows: `repeat(${visibleRowCount}, 1.25rem)` }}
+                      >
+                        {visibleSegs.map(seg => (
                           <div
                             key={seg.event.id}
-                            style={{ gridColumn: `${seg.startCol + 1} / span ${seg.span}` }}
+                            style={{ gridColumn: `${seg.startCol + 1} / span ${seg.span}`, gridRow: seg.row + 1 }}
                             onClick={e => { e.stopPropagation(); setSelectedEvent(seg.event) }}
                             title={seg.event.summary}
                             className={[
@@ -413,7 +416,7 @@ export function CalendarView() {
                           </div>
                         ))}
                       </div>
-                    ))}
+                    )}
 
                     {/* Clickable empty area below events */}
                     <div className="flex-1 grid grid-cols-7 gap-px bg-zinc-100 dark:bg-zinc-800">
