@@ -120,6 +120,8 @@ function getWeekSegments(allEvents: CalEvent[], weekDays: Date[]): EventSegment[
   // Longer events first so they get lower (more prominent) rows
   segs.sort((a, b) => b.span - a.span || a.startCol - b.startCol)
 
+  console.log(`[Cal] ${toDateStr(weekDays[0])}–${toDateStr(weekDays[6])}: ${segs.length} segs before assignment:`, segs.map(s => `${s.event.summary.slice(0,15)} col${s.startCol}+${s.span}`))
+
   // occupied[row][col] = true means that column is taken in that row
   const occupied: boolean[][] = []
   for (const seg of segs) {
@@ -136,6 +138,8 @@ function getWeekSegments(allEvents: CalEvent[], weekDays: Date[]): EventSegment[
     seg.row = row
     for (let c = seg.startCol; c < seg.startCol + seg.span; c++) occupied[row][c] = true
   }
+
+  console.log(`[Cal] ${toDateStr(weekDays[0])} result:`, segs.map(s => `${s.event.summary.slice(0,15)} col${s.startCol}+${s.span}→row${s.row}`))
 
   return segs
 }
